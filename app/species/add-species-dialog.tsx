@@ -92,50 +92,78 @@ export default function AddSpeciesDialog({ userId }: { userId: string }) {
   }, [img]);
 
   // onSubmit for Wikipedia input
-  function onSubmit2(formData: z.infer<typeof inputSchema>) {
-    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${formData.animalName}`)
-      .then((response) => response.json())
-      .then((e) => {
-        if (e.title === "Not found.") {
-          toast({
-            title: "There are no Wikipedia articles that match your entry:",
-            description: (
-              <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-                <code className="text-white">{JSON.stringify(e, null, 2)}</code>
-              </pre>
-            ),
-          });
-        } else {
-          setDescription(e.extract);
-        }
-      })
-      .catch((error) => {
-        let errorMessage = "Failed to do something exceptional";
-        if (error instanceof Error) {
-          errorMessage = error.message;
-        }
-        console.log(errorMessage);
-      });
+  async function onSubmit2(formData: z.infer<typeof inputSchema>) {
+    const e = await (await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${formData.animalName}`)).json();
 
-    fetch(`https://en.wikipedia.org/api/rest_v1/page/media-list/${formData.animalName}`)
-      .then((response) => response.json())
-      .then((e) => {
-        if (e.title === "Not found.") {
-          toast({
-            title: "There are no Wikipedia articles that match your entry:",
-            description: (
-              <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-                <code className="text-white">{JSON.stringify(e, null, 2)}</code>
-              </pre>
-            ),
-          });
-        } else {
-          setImg(e.items[0].srcset[0].src);
-        }
-      })
-      .catch((err) => {
-        console.log(err);
-      });
+    try {
+      if (e.title === "Not found.") {
+        toast({
+          title: "There are no Wikipedia articles that match your entry:",
+          description: (
+            <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
+              <code className="text-white">{JSON.stringify(e, null, 2)}</code>
+            </pre>
+          ),
+        });
+      } else {
+        setDescription(e.extract);
+      }
+    } catch (error) {
+      let errorMessage = "Failed to do something exceptional";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      console.log(errorMessage);
+    }
+
+    // fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${formData.animalName}`)
+    //   .then((response) => response.json())
+    //   .then((e) => {
+    //     if (e.title === "Not found.") {
+    //       toast({
+    //         title: "There are no Wikipedia articles that match your entry:",
+    //         description: (
+    //           <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
+    //             <code className="text-white">{JSON.stringify(e, null, 2)}</code>
+    //           </pre>
+    //         ),
+    //       });
+    //     } else {
+    //       setDescription(e.extract);
+    //     }
+    //   })
+    //   .catch((error) => {
+    //     const msg = (error as Error).message;
+    //     let errorMessage = "Failed to do something exceptional";
+    //     if (error instanceof Error) {
+    //       errorMessage = error.message;
+    //     }
+    //     console.log(errorMessage);
+    //     console.log(msg);
+    //   });
+
+    const f = await (await fetch(`https://en.wikipedia.org/api/rest_v1/page/media-list/${formData.animalName}`)).json();
+
+    try {
+      if (f.title === "Not found.") {
+        toast({
+          title: "There are no Wikipedia articles that match your entry:",
+          description: (
+            <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
+              <code className="text-white">{JSON.stringify(e, null, 2)}</code>
+            </pre>
+          ),
+        });
+      } else {
+        setImg(f.items[0].srcset[0].src);
+      }
+    } catch (error) {
+      let errorMessage = "Failed to do something exceptional";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      console.log(errorMessage);
+    }
   }
   // onSubmit for the animal input
   const onSubmit = async (input: FormData) => {
