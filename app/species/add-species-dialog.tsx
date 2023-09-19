@@ -109,8 +109,12 @@ export default function AddSpeciesDialog({ userId }: { userId: string }) {
           setDescription(e.extract);
         }
       })
-      .catch((err) => {
-        console.log(err);
+      .catch((error) => {
+        let errorMessage = "Failed to do something exceptional";
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+        console.log(errorMessage);
       });
 
     fetch(`https://en.wikipedia.org/api/rest_v1/page/media-list/${formData.animalName}`)
