@@ -13,13 +13,14 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { type Database } from "@/lib/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useRouter } from "next/navigation";
-import { useState, type BaseSyntheticEvent } from "react";
+import { useEffect, useState, type BaseSyntheticEvent } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -27,7 +28,6 @@ import { z } from "zod";
 // zod handles validation of the input values with methods like .string(), .nullable(). It also processes the form inputs with .transform() before the inputs are sent to the database.
 
 const kingdoms = z.enum(["Animalia", "Plantae", "Fungi", "Protista", "Archaea", "Bacteria"]);
-
 const speciesSchema = z.object({
   common_name: z
     .string()
@@ -54,6 +54,13 @@ const speciesSchema = z.object({
 
 type FormData = z.infer<typeof speciesSchema>;
 
+// setting up the form for the Wikipedia Search
+const inputSchema = z.object({
+  animalName: z.string().min(2, {
+    message: "Animal name must be at least 2 characters.",
+  }),
+});
+
 const defaultValues: Partial<FormData> = {
   kingdom: "Animalia",
 };
@@ -61,13 +68,72 @@ const defaultValues: Partial<FormData> = {
 export default function AddSpeciesDialog({ userId }: { userId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState<boolean>(false);
+  const [description, setDescription] = useState("");
+  const [img, setImg] = useState("");
 
+  // form for animal input
   const form = useForm<FormData>({
     resolver: zodResolver(speciesSchema),
     defaultValues,
     mode: "onChange",
   });
 
+  //the form for the Wikipedia input
+  const form2 = useForm<z.infer<typeof inputSchema>>({
+    resolver: zodResolver(inputSchema),
+  });
+
+  useEffect(() => {
+    form.setValue("description", description);
+  }, [description]);
+
+  useEffect(() => {
+    form.setValue("image", "https:" + img);
+  }, [img]);
+
+  // onSubmit for Wikipedia input
+  function onSubmit2(formData: z.infer<typeof inputSchema>) {
+    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${formData.animalName}`)
+      .then((response) => response.json())
+      .then((e) => {
+        if (e.title === "Not found.") {
+          toast({
+            title: "There are no Wikipedia articles that match your entry:",
+            description: (
+              <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
+                <code className="text-white">{JSON.stringify(e, null, 2)}</code>
+              </pre>
+            ),
+          });
+        } else {
+          setDescription(e.extract);
+        }
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+
+    fetch(`https://en.wikipedia.org/api/rest_v1/page/media-list/${formData.animalName}`)
+      .then((response) => response.json())
+      .then((e) => {
+        if (e.title === "Not found.") {
+          toast({
+            title: "There are no Wikipedia articles that match your entry:",
+            description: (
+              <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
+                <code className="text-white">{JSON.stringify(e, null, 2)}</code>
+              </pre>
+            ),
+          });
+        } else {
+          setImg(e.items[0].srcset[0].src);
+        }
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  }
+  // onSubmit for the animal input
   const onSubmit = async (input: FormData) => {
     // The `input` prop contains data that has already been processed by zod. We can now use it in a supabase query
     const supabase = createClientComponentClient<Database>();
@@ -116,6 +182,36 @@ export default function AddSpeciesDialog({ userId }: { userId: string }) {
             Add a new species here. Click &quot;Add Species&quot; below when you&apos;re done.
           </DialogDescription>
         </DialogHeader>
+
+        {/* form for Wikipedia Input */}
+        <Form {...form2}>
+          <form onSubmit={(e: BaseSyntheticEvent) => void form2.handleSubmit(onSubmit2)(e)}>
+            <div className="flex w-full items-center gap-4">
+              <div className="w-full">
+                <FormField
+                  control={form2.control}
+                  name="animalName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Search for your animal on Wikipedia</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Cavia porcellus" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="mt-8">
+                <Button type="submit">Search</Button>
+              </div>
+            </div>
+          </form>
+        </Form>
+        <Separator className="my-2" />
+
+        {/* form for animal input */}
+
         <Form {...form}>
           <form onSubmit={(e: BaseSyntheticEvent) => void form.handleSubmit(onSubmit)(e)}>
             <div className="grid w-full items-center gap-4">
